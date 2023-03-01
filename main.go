@@ -1,50 +1,50 @@
 package main
 
 import (
+	"io"
 	"log"
 	"net/http"
-	"time"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
 
-type TimeoffRequest struct {
-	Date   time.Time `json:"date" form:"date" time_format:"2006-01-02" binding:"-"`
-	Amount float64   `json:"amount" form:"amount" binding:"-"`
-}
-
 func main() {
 	router := gin.Default()
 
-	router.GET("/employee", func(c *gin.Context) {
-		c.File("./public/employee.html")
+	router.StaticFile("/", "./index.html")
+
+	router.GET("/tale_of_two_cities", func(c *gin.Context) {
+		f, err := os.Open("./a_tale_of_two_cities.txt")
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+		}
+		defer f.Close()
+		data, err := io.ReadAll(f)
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+		}
+		c.Data(http.StatusOK, "text/plain", data)
 	})
 
-	router.POST("/employee", func(c *gin.Context) {
-		var timeoffRequest TimeoffRequest
-		if err := c.ShouldBind(&timeoffRequest); err == nil {
-			c.JSON(http.StatusOK, timeoffRequest)
-		} else {
-			c.String(http.StatusInternalServerError, err.Error())
+	router.GET("/great_expectations", func(c *gin.Context) {
+		f, err := os.Open("./great_expectations.txt")
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
 		}
-	})
+		defer f.Close()
+		fi, err := f.Stat()
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+		}
 
-	apiGroup := router.Group("/api")
+		c.DataFromReader(http.StatusOK,
+			fi.Size(),
+			"text/plain",
+			f,
+			map[string]string{"Content-Disposition": "attachment; filename=great_expectations.txt"},
+		)
 
-	/*
-		Works with message:
-		{
-			"date": "2022-12-31T00:00:00Z",
-			"amount": 8
-		}
-	*/
-	apiGroup.POST("/timeoff", func(c *gin.Context) {
-		var timeoffRequest TimeoffRequest
-		if err := c.ShouldBindJSON(&timeoffRequest); err == nil {
-			c.JSON(http.StatusOK, timeoffRequest)
-		} else {
-			c.String(http.StatusInternalServerError, err.Error())
-		}
 	})
 
 	log.Fatal(router.Run(":3000"))
