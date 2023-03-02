@@ -15,6 +15,8 @@ func main() {
 	}
 	r := gin.Default()
 	r.LoadHTMLGlob("./templates/*")
+
+	r.Use(gin.BasicAuth(gin.Accounts{"admin": "password"}))
 	registerRoutes(r)
 
 	r.Run()
