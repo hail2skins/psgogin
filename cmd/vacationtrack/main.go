@@ -2,9 +2,11 @@ package main
 
 import (
 	"demo/employee"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -72,7 +74,7 @@ func registerRoutes(r *gin.Engine) {
 		}
 	})
 
-	g := r.Group("/api/employees")
+	g := r.Group("/api/employees", Benchmark)
 	{
 		g.GET("/", func(c *gin.Context) {
 			c.JSON(http.StatusOK, employee.GetAll())
@@ -102,4 +104,13 @@ func registerRoutes(r *gin.Engine) {
 	}
 
 	r.Static("/public", "./public")
+}
+
+var Benchmark gin.HandlerFunc = func(c *gin.Context) {
+	t := time.Now()
+
+	c.Next()
+
+	elapsed := time.Since(t)
+	log.Print("Time to process:", elapsed)
 }
