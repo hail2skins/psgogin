@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,8 +16,7 @@ func main() {
 	}
 	r := gin.Default()
 	r.LoadHTMLGlob("./templates/*")
-
-	r.Use(gin.BasicAuth(gin.Accounts{"admin": "password"}))
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	registerRoutes(r)
 
 	r.Run()
@@ -24,6 +24,20 @@ func main() {
 }
 
 func registerRoutes(r *gin.Engine) {
+
+	tryToGetEmployee := func(c *gin.Context, employeeIDRaw string) (*employee.Employee, bool) {
+		employeeID, err := strconv.Atoi(employeeIDRaw)
+		if err != nil {
+			c.AbortWithStatus(http.StatusNotFound)
+			return nil, false
+		}
+		emp, err := employee.Get(employeeID)
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return nil, false
+		}
+		return emp, true
+	}
 
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusTemporaryRedirect, "/employees")
@@ -35,6 +49,7 @@ func registerRoutes(r *gin.Engine) {
 
 	r.GET("/employees/:employeeID", func(c *gin.Context) {
 		employeeIDRaw := c.Param("employeeID")
+
 		if emp, ok := tryToGetEmployee(c, employeeIDRaw); ok {
 			c.HTML(http.StatusOK, "employee.tmpl", *emp)
 		}
@@ -87,17 +102,4 @@ func registerRoutes(r *gin.Engine) {
 	}
 
 	r.Static("/public", "./public")
-}
-
-func tryToGetEmployee(c *gin.Context, employeeIDRaw string) (*employee.Employee, bool) {
-	employeeID, err := strconv.Atoi(employeeIDRaw)
-	if err != nil {
-		c.AbortWithStatus(http.StatusNotFound)
-	}
-	emp, err := employee.Get(employeeID)
-	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return nil, false
-	}
-	return emp, true
 }
